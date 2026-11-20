@@ -1,80 +1,133 @@
 
 import java.util.*;
 
-class BPlusTree {
-    ArrayList<Integer> keys = new ArrayList<>();
+public class BbPlusTree {
+    static class Node {
+        ArrayList<Integer> keys = new ArrayList<>();
+        ArrayList<Node> child = new ArrayList<>();
+        boolean leaf = true;
+    }
 
-    void insert(int key) {
-        long start = System.nanoTime();
+    static Node root = new Node();
+    static final int MAX = 3;
 
-        if (!keys.contains(key)) {
-            keys.add(key);
-            Collections.sort(keys);
-            System.out.println("Inserted: " + key);
+    static int insert(Node n, int k) {
+        if (n.leaf) {
+            int i = 0;
+            while (i < n.keys.size() && n.keys.get(i) < k)
+                i++;
+            n.keys.add(i, k);
         } else {
-            System.out.println("Duplicate key!");
+            int i = 0;
+            while (i < n.keys.size() && k >= n.keys.get(i))
+                i++;
+
+            int mid = insert(n.child.get(i), k);
+
+            if (mid != -1) {
+                Node right = splitNode;
+                n.keys.add(i, mid);
+                n.child.add(i + 1, right);
+            }
         }
 
-        long end = System.nanoTime();
-        System.out.println("Time Complexity: O(n log n)");
-        System.out.println("Space Complexity: O(n)");
-        System.out.println("Time Consumed: " + (end-start) + " ns");
+        if (n.keys.size() <= MAX) return -1;
+
+        Node right = new Node();
+        right.leaf = n.leaf;
+
+        int mid = n.keys.size() / 2;
+        int promote;
+
+        if (n.leaf) {
+            while (n.keys.size() > mid)
+                right.keys.add(n.keys.remove(mid));
+            promote = right.keys.get(0);
+        } else {
+            promote = n.keys.get(mid);
+            while (n.keys.size() > mid + 1)
+                right.keys.add(n.keys.remove(mid + 1));
+            n.keys.remove(mid);
+
+            while (n.child.size() > mid + 1)
+                right.child.add(n.child.remove(mid + 1));
+        }
+
+        splitNode = right;
+        return promote;
     }
 
-    void delete(int key) {
-        long start = System.nanoTime();
+    static Node splitNode;
 
-        if (keys.remove(Integer.valueOf(key)))
-            System.out.println("Deleted: " + key);
+    static void add(int k) {
+        ArrayList<Integer> a = new ArrayList<>();
+        collect(root, a);
+        if (a.contains(k)) return;
+
+        int mid = insert(root, k);
+
+        if (mid != -1) {
+            Node r = new Node();
+            r.leaf = false;
+            r.keys.add(mid);
+            r.child.add(root);
+            r.child.add(splitNode);
+            root = r;
+        }
+    }
+
+    static void collect(Node n, ArrayList<Integer> a) {
+        if (n.leaf)
+            a.addAll(n.keys);
         else
-            System.out.println("Key not found!");
-
-        long end = System.nanoTime();
-        System.out.println("Time Complexity: O(n)");
-        System.out.println("Space Complexity: O(1) auxiliary");
-        System.out.println("Time Consumed: " + (end-start) + " ns");
+            for (Node c : n.child)
+                collect(c, a);
     }
 
-    void display() {
-        long start = System.nanoTime();
+    static void delete(int k) {
+        ArrayList<Integer> a = new ArrayList<>();
+        collect(root, a);
 
-        System.out.println("B+ Tree: " + keys);
+        if (!a.remove(Integer.valueOf(k))) {
+            System.out.println("Key not found");
+            return;
+        }
 
-        long end = System.nanoTime();
-        System.out.println("Time Complexity: O(n)");
-        System.out.println("Space Complexity: O(1) auxiliary");
-        System.out.println("Time Consumed: " + (end-start) + " ns");
+        root = new Node();
+        for (int x : a) add(x);
+        System.out.println("Deleted");
+    }
+
+    static void display(Node n, int level) {
+        System.out.println("  ".repeat(level) +
+            (n.leaf ? "Leaf " : "Index ") + n.keys);
+
+        if (!n.leaf)
+            for (Node c : n.child)
+                display(c, level + 1);
     }
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
-        BPlusTree b = new BPlusTree();
 
         while (true) {
-            System.out.println("\n1. Insert");
-            System.out.println("2. Delete");
-            System.out.println("3. Display");
-            System.out.print("Enter choice: ");
-
+            System.out.println("\n1.Insert 2.Delete 3.Display 4.Exit");
             int ch = sc.nextInt();
 
             switch (ch) {
                 case 1:
-                    System.out.print("Enter key: ");
-                    b.insert(sc.nextInt());
+                    System.out.print("Key: ");
+                    add(sc.nextInt());
                     break;
-
                 case 2:
-                    System.out.print("Enter key: ");
-                    b.delete(sc.nextInt());
+                    System.out.print("Key: ");
+                    delete(sc.nextInt());
                     break;
-
                 case 3:
-                    b.display();
+                    display(root, 0);
                     break;
-
-                default:
-                    System.out.println("Invalid choice!");
+                case 4:
+                    return;
             }
         }
     }
